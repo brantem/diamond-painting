@@ -13,9 +13,7 @@ type Reducer struct {
 }
 
 func New(max int) *Reducer {
-	return &Reducer{
-		max: max,
-	}
+	return &Reducer{max: max}
 }
 
 type ColorBox struct {
@@ -24,7 +22,7 @@ type ColorBox struct {
 	Max    [3]uint8
 }
 
-func (r *Reducer) Do(img image.Image) image.Image {
+func (r *Reducer) Do(img image.Image) *image.Paletted {
 	r.input = img
 
 	bounds := r.input.Bounds()

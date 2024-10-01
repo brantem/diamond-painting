@@ -18,7 +18,7 @@ func New(max int) *Pixelator {
 	return &Pixelator{max: max}
 }
 
-func (p *Pixelator) Do(img image.Image) image.Image {
+func (p *Pixelator) Do(img image.Image) *image.RGBA {
 	p.input = img
 
 	bounds := img.Bounds()
