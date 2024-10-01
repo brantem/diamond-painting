@@ -8,8 +8,6 @@ import (
 
 type Reducer struct {
 	max int
-
-	input image.Image
 }
 
 func New(max int) *Reducer {
@@ -23,14 +21,12 @@ type ColorBox struct {
 }
 
 func (r *Reducer) Do(img image.Image) *image.Paletted {
-	r.input = img
-
-	bounds := r.input.Bounds()
+	bounds := img.Bounds()
 
 	colors := make([][3]uint8, 0, bounds.Dx()*bounds.Dy())
 	for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
 		for x := bounds.Min.X; x < bounds.Max.X; x++ {
-			r, g, b, _ := r.input.At(x, y).RGBA()
+			r, g, b, _ := img.At(x, y).RGBA()
 			colors = append(colors, [3]uint8{uint8(r >> 8), uint8(g >> 8), uint8(b >> 8)})
 		}
 	}
@@ -46,7 +42,7 @@ func (r *Reducer) Do(img image.Image) *image.Paletted {
 			palette[i] = color.RGBA{c[0], c[1], c[2], 255}
 			i++
 		}
-		return r.createPalettedImage(palette)
+		return r.createPalettedImage(img, palette)
 	}
 
 	boxes := r.medianCut(colors, r.max)
@@ -56,7 +52,7 @@ func (r *Reducer) Do(img image.Image) *image.Paletted {
 		palette[i] = r.averageColor(box.Colors)
 	}
 
-	return r.createPalettedImage(palette)
+	return r.createPalettedImage(img, palette)
 }
 
 func (r *Reducer) medianCut(colors [][3]uint8, maxColors int) []ColorBox {
@@ -149,12 +145,12 @@ func (*Reducer) averageColor(colors [][3]uint8) color.Color {
 	}
 }
 
-func (r *Reducer) createPalettedImage(palette color.Palette) *image.Paletted {
-	bounds := r.input.Bounds()
+func (r *Reducer) createPalettedImage(img image.Image, palette color.Palette) *image.Paletted {
+	bounds := img.Bounds()
 	output := image.NewPaletted(bounds, palette)
 	for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
 		for x := bounds.Min.X; x < bounds.Max.X; x++ {
-			output.Set(x, y, r.input.At(x, y))
+			output.Set(x, y, img.At(x, y))
 		}
 	}
 	return output
