@@ -3,24 +3,19 @@ package pixelator
 import (
 	"image"
 	"image/color"
-	"math"
 	"runtime"
 	"sync"
 )
 
 type Pixelator struct {
-	max  int
-	size int
+	max int
 
 	input  image.Image
 	output *image.RGBA
 }
 
-func New(max int, pixelSizeInches, dpi float64) *Pixelator {
-	return &Pixelator{
-		max:  max,
-		size: int(math.Round(pixelSizeInches * dpi)),
-	}
+func New(max int) *Pixelator {
+	return &Pixelator{max: max}
 }
 
 func (p *Pixelator) Do(img image.Image) image.Image {
@@ -30,8 +25,8 @@ func (p *Pixelator) Do(img image.Image) image.Image {
 	w, h := bounds.Dx(), bounds.Dy()
 	aspectRatio := float64(w) / float64(h)
 
-	px := w / p.size
-	py := h / p.size
+	px := w
+	py := h
 
 	if px > p.max {
 		px = p.max
@@ -46,9 +41,7 @@ func (p *Pixelator) Do(img image.Image) image.Image {
 	px = max(1, px)
 	py = max(1, py)
 
-	w2 := px * p.size
-	h2 := py * p.size
-	p.output = image.NewRGBA(image.Rect(0, 0, w2, h2))
+	p.output = image.NewRGBA(image.Rect(0, 0, px, py))
 
 	var wg sync.WaitGroup
 	numRoutines := runtime.NumCPU()
@@ -64,7 +57,7 @@ func (p *Pixelator) Do(img image.Image) image.Image {
 
 		go func(start, end int) {
 			defer wg.Done()
-			p.processRows(start, end, px, w, h, w2, h2)
+			p.processRows(start, end, w, h, px, py)
 		}(start, end)
 	}
 
@@ -72,20 +65,20 @@ func (p *Pixelator) Do(img image.Image) image.Image {
 	return p.output
 }
 
-func (p *Pixelator) processRows(start, end, px, w, h, w2, h2 int) {
-	scaleX := float64(w) / float64(w2)
-	scaleY := float64(h) / float64(h2)
+func (p *Pixelator) processRows(start, end, w, h, px, py int) {
+	scaleX := float64(w) / float64(px)
+	scaleY := float64(h) / float64(py)
 
 	for y := start; y < end; y++ {
 		for x := 0; x < px; x++ {
-			origMinX := int(float64(x*p.size) * scaleX)
-			origMinY := int(float64(y*p.size) * scaleY)
-			origMaxX := min(int(float64((x+1)*p.size)*scaleX), w)
-			origMaxY := min(int(float64((y+1)*p.size)*scaleY), h)
+			minX := int(float64(x) * scaleX)
+			minY := int(float64(y) * scaleY)
+			maxX := min(int(float64((x+1))*scaleX), w)
+			maxY := min(int(float64((y+1))*scaleY), h)
 
-			r, g, b, a := p.averageColor(origMinX, origMinY, origMaxX, origMaxY)
+			r, g, b, a := p.averageColor(minX, minY, maxX, maxY)
 			color := color.RGBA{r, g, b, a}
-			p.drawBlock(x, y, color)
+			p.output.Set(x, y, color)
 		}
 	}
 }
@@ -112,12 +105,4 @@ func (p *Pixelator) averageColor(minX, minY, maxX, maxY int) (uint8, uint8, uint
 	}
 
 	return uint8(r), uint8(g), uint8(b), uint8(a)
-}
-
-func (p *Pixelator) drawBlock(x, y int, color color.RGBA) {
-	for py := y * p.size; py < (y+1)*p.size; py++ {
-		for px := x * p.size; px < (x+1)*p.size; px++ {
-			p.output.Set(px, py, color)
-		}
-	}
 }
