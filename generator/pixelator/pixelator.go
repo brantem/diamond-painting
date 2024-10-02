@@ -52,7 +52,7 @@ func (p *Pixelator) Do(img image.Image) *image.RGBA {
 
 		go func(start, end int) {
 			defer wg.Done()
-			p.processRows(img, pixelated, start, end, w, h, px, py)
+			processRows(img, pixelated, start, end, w, h, px, py)
 		}(start, end)
 	}
 	wg.Wait()
@@ -60,7 +60,7 @@ func (p *Pixelator) Do(img image.Image) *image.RGBA {
 	return pixelated
 }
 
-func (p *Pixelator) processRows(img image.Image, pixelated *image.RGBA, start, end, w, h, px, py int) {
+func processRows(img image.Image, pixelated *image.RGBA, start, end, w, h, px, py int) {
 	scaleX := float64(w) / float64(px)
 	scaleY := float64(h) / float64(py)
 
@@ -71,14 +71,14 @@ func (p *Pixelator) processRows(img image.Image, pixelated *image.RGBA, start, e
 			maxX := min(int(float64((x+1))*scaleX), w)
 			maxY := min(int(float64((y+1))*scaleY), h)
 
-			r, g, b := p.averageColor(img, minX, minY, maxX, maxY)
+			r, g, b := averageColor(img, minX, minY, maxX, maxY)
 			color := color.RGBA{r, g, b, 255}
 			pixelated.Set(x, y, color)
 		}
 	}
 }
 
-func (p *Pixelator) averageColor(img image.Image, minX, minY, maxX, maxY int) (uint8, uint8, uint8) {
+func averageColor(img image.Image, minX, minY, maxX, maxY int) (uint8, uint8, uint8) {
 	var r, g, b uint64
 	count := uint64((maxX - minX) * (maxY - minY))
 

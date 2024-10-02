@@ -49,30 +49,27 @@ func (r *Reducer) Do(img image.Image) *image.Paletted {
 
 	palette := make(color.Palette, len(boxes))
 	for i, box := range boxes {
-		palette[i] = r.averageColor(box.Colors)
+		palette[i] = averageColor(box.Colors)
 	}
 
 	return r.createPalettedImage(img, palette)
 }
 
 func (r *Reducer) medianCut(colors [][3]uint8, maxColors int) []ColorBox {
-	initialBox := r.createColorBox(colors)
-	boxes := []ColorBox{initialBox}
-
+	boxes := []ColorBox{createColorBox(colors)}
 	for len(boxes) < maxColors {
-		boxToSplit := r.findBoxWithLargestRange(boxes)
-		if boxToSplit == -1 {
+		i := findBoxWithLargestRange(boxes)
+		if i == -1 {
 			break
 		}
-		box1, box2 := r.splitBox(boxes[boxToSplit])
-		boxes[boxToSplit] = box1
+		box1, box2 := splitBox(boxes[i])
+		boxes[i] = box1
 		boxes = append(boxes, box2)
 	}
-
 	return boxes
 }
 
-func (r *Reducer) createColorBox(colors [][3]uint8) ColorBox {
+func createColorBox(colors [][3]uint8) ColorBox {
 	box := ColorBox{
 		Colors: colors,
 		Min:    [3]uint8{255, 255, 255},
@@ -89,60 +86,42 @@ func (r *Reducer) createColorBox(colors [][3]uint8) ColorBox {
 	return box
 }
 
-func (r *Reducer) findBoxWithLargestRange(boxes []ColorBox) int {
-	maxRange := uint8(0)
-	boxIndex := -1
-
+func findBoxWithLargestRange(boxes []ColorBox) int {
+	maxRange, index := uint8(0), -1
 	for i, box := range boxes {
 		for j := 0; j < 3; j++ {
 			r := box.Max[j] - box.Min[j]
 			if r > maxRange {
-				maxRange = r
-				boxIndex = i
+				maxRange, index = r, i
 			}
 		}
 	}
-
-	return boxIndex
+	return index
 }
 
-func (r *Reducer) splitBox(box ColorBox) (ColorBox, ColorBox) {
-	longestAxis := 0
-	axisLength := uint8(0)
-
-	for i := 0; i < 3; i++ {
-		length := box.Max[i] - box.Min[i]
-		if length > axisLength {
-			axisLength = length
-			longestAxis = i
+func splitBox(box ColorBox) (ColorBox, ColorBox) {
+	axis := 0
+	for i := 1; i < 3; i++ {
+		if box.Max[i]-box.Min[i] > box.Max[axis]-box.Min[axis] {
+			axis = i
 		}
 	}
-
 	sort.Slice(box.Colors, func(i, j int) bool {
-		return box.Colors[i][longestAxis] < box.Colors[j][longestAxis]
+		return box.Colors[i][axis] < box.Colors[j][axis]
 	})
-
 	median := len(box.Colors) / 2
-	box1 := ColorBox{Colors: box.Colors[:median]}
-	box2 := ColorBox{Colors: box.Colors[median:]}
-
-	return r.createColorBox(box1.Colors), r.createColorBox(box2.Colors)
+	return createColorBox(box.Colors[:median]), createColorBox(box.Colors[median:])
 }
 
-func (*Reducer) averageColor(colors [][3]uint8) color.Color {
+func averageColor(colors [][3]uint8) color.Color {
 	var r, g, b uint32
 	for _, c := range colors {
 		r += uint32(c[0])
 		g += uint32(c[1])
 		b += uint32(c[2])
 	}
-	count := uint32(len(colors))
-	return color.RGBA{
-		R: uint8(r / count),
-		G: uint8(g / count),
-		B: uint8(b / count),
-		A: 255,
-	}
+	n := uint32(len(colors))
+	return color.RGBA{uint8(r / n), uint8(g / n), uint8(b / n), 255}
 }
 
 func (r *Reducer) createPalettedImage(img image.Image, palette color.Palette) *image.Paletted {
