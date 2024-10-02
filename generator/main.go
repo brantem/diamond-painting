@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"image"
 	_ "image/jpeg"
+	"image/png"
 	"syscall/js"
 
 	"diamond.brantem.com/generator/pixelator"
@@ -21,9 +22,43 @@ func main() {
 }
 
 func generate(this js.Value, args []js.Value) interface{} {
-	arrayBuffer := args[0]
+	img := getImage(args[0])
 
-	arr := js.Global().Get("Uint8Array").New(arrayBuffer)
+	options := args[1]
+
+	p := pixelator.New(options.Get("size").Int())
+	pixelated := p.Do(img)
+
+	result := js.Global().Get("Object").New()
+
+	metadataObj := js.Global().Get("Object").New(2)
+	metadataObj.Set("width", pixelated.Rect.Dx())
+	metadataObj.Set("height", pixelated.Rect.Dy())
+	result.Set("metadata", metadataObj)
+
+	r := reducer.New(options.Get("colors").Int())
+	reduced, colors := r.Do(pixelated)
+
+	var buf bytes.Buffer
+	png.Encode(&buf, reduced)
+
+	b := buf.Bytes()
+	data := js.Global().Get("Uint8Array").New(len(b))
+	js.CopyBytesToJS(data, b)
+	result.Set("data", data)
+
+	colorsObj := js.Global().Get("Object").New(len(colors))
+	for color, usage := range colors {
+		r, g, b, _ := color.RGBA()
+		colorsObj.Set(fmt.Sprintf("#%02X%02X%02X", uint8(r>>8), uint8(g>>8), uint8(b>>8)), usage)
+	}
+	metadataObj.Set("colors", colorsObj)
+
+	return result
+}
+
+func getImage(buf js.Value) image.Image {
+	arr := js.Global().Get("Uint8Array").New(buf)
 	data := make([]byte, arr.Length())
 	js.CopyBytesToGo(data, arr)
 
@@ -32,29 +67,5 @@ func generate(this js.Value, args []js.Value) interface{} {
 		fmt.Println("Error: ", err)
 		return nil
 	}
-
-	p := pixelator.New(150)
-	pixelated := p.Do(img)
-
-	result := js.Global().Get("Object").New()
-	result.Set("width", pixelated.Rect.Dx())
-	result.Set("height", pixelated.Rect.Dy())
-
-	r := reducer.New(20)
-	reduced := r.Do(pixelated)
-
-	pixelArr := js.Global().Get("Uint8Array").New(len(reduced.Pix))
-	js.CopyBytesToJS(pixelArr, reduced.Pix)
-	result.Set("pixels", pixelArr)
-
-	colors := js.Global().Get("Array").New(len(reduced.Palette))
-	for i, c := range reduced.Palette {
-		r, g, b, _ := c.RGBA()
-		hexColor := fmt.Sprintf("#%02X%02X%02X", uint8(r>>8), uint8(g>>8), uint8(b>>8))
-		colors.SetIndex(i, hexColor)
-	}
-	result.Set("colors", colors)
-
-	return result
-
+	return img
 }

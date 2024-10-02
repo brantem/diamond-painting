@@ -17,15 +17,16 @@ func New(max int) *Reducer {
 	return &Reducer{max: max}
 }
 
-func (r *Reducer) Do(img image.Image) *image.Paletted {
-	colors := extractColors(img)
-	uniqueColors := unique(colors)
+func (r *Reducer) Do(img image.Image) (*image.Paletted, map[color.Color]int) {
+	uniqueColors := unique(extractColors(img))
 
+	var palette color.Palette
 	if len(uniqueColors) <= r.max {
-		return createPalettedImage(img, paletteFromUnique(uniqueColors))
+		palette = paletteFromUnique(uniqueColors)
+	} else {
+		palette = kMeansPalette(uniqueColors, r.max)
 	}
 
-	palette := kMeansPalette(uniqueColors, r.max)
 	return createPalettedImage(img, palette)
 }
 
@@ -146,13 +147,18 @@ func manhattanDistance(c1, c2 [3]uint8) float64 {
 	return math.Abs(float64(c1[0])-float64(c2[0])) + math.Abs(float64(c1[1])-float64(c2[1])) + math.Abs(float64(c1[2])-float64(c2[2]))
 }
 
-func createPalettedImage(img image.Image, palette color.Palette) *image.Paletted {
+func createPalettedImage(img image.Image, palette color.Palette) (*image.Paletted, map[color.Color]int) {
 	bounds := img.Bounds()
+
 	output := image.NewPaletted(bounds, palette)
+	colors := make(map[color.Color]int, len(palette))
+
 	for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
 		for x := bounds.Min.X; x < bounds.Max.X; x++ {
-			output.Set(x, y, img.At(x, y))
+			color := palette.Convert(img.At(x, y))
+			output.Set(x, y, color)
+			colors[color]++
 		}
 	}
-	return output
+	return output, colors
 }
