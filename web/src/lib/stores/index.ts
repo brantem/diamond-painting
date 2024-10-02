@@ -1,2 +1,2 @@
-export * from "./picture";
-export * from "./settings";
+export * from './settings';
+export * from './canvas';

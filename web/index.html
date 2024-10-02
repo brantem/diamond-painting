@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
@@ -7,6 +7,13 @@
     <title>Diamond Painting - Brantem</title>
     <link rel="preconnect" href="https://rsms.me/" />
     <link rel="stylesheet" href="https://rsms.me/inter/inter.css" />
+    <script src="wasm_exec.js"></script>
+    <script>
+      const go = new Go();
+      WebAssembly.instantiateStreaming(fetch('generator.wasm'), go.importObject).then((result) =>
+        go.run(result.instance),
+      );
+    </script>
   </head>
   <body>
     <div id="root"></div>
