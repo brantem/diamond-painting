@@ -3,7 +3,10 @@ package reducer
 import (
 	"image"
 	"image/color"
-	"sort"
+	"math"
+	"math/rand"
+	"runtime"
+	"sync"
 )
 
 type Reducer struct {
@@ -14,117 +17,136 @@ func New(max int) *Reducer {
 	return &Reducer{max: max}
 }
 
-type ColorBox struct {
-	Colors [][3]uint8
-	Min    [3]uint8
-	Max    [3]uint8
-}
-
 func (r *Reducer) Do(img image.Image) *image.Paletted {
-	bounds := img.Bounds()
+	colors := extractColors(img)
+	uniqueColors := unique(colors)
 
-	colors := make([][3]uint8, 0, bounds.Dx()*bounds.Dy())
-	for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
-		for x := bounds.Min.X; x < bounds.Max.X; x++ {
-			r, g, b, _ := img.At(x, y).RGBA()
-			colors = append(colors, [3]uint8{uint8(r >> 8), uint8(g >> 8), uint8(b >> 8)})
-		}
+	if len(uniqueColors) <= r.max {
+		return createPalettedImage(img, paletteFromUnique(uniqueColors))
 	}
 
-	uniqueColors := make(map[[3]uint8]struct{})
+	palette := kMeansPalette(uniqueColors, r.max)
+	return createPalettedImage(img, palette)
+}
+
+func extractColors(img image.Image) [][3]uint8 {
+	bounds := img.Bounds()
+	colors := make([][3]uint8, bounds.Dx()*bounds.Dy())
+
+	numRoutines := runtime.NumCPU()
+	rowsPerRoutine := bounds.Dy() / numRoutines
+
+	var wg sync.WaitGroup
+	for i := 0; i < numRoutines; i++ {
+		wg.Add(1)
+		go func(start int) {
+			defer wg.Done()
+			for y := start; y < start+rowsPerRoutine && y < bounds.Max.Y; y++ {
+				for x := bounds.Min.X; x < bounds.Max.X; x++ {
+					r, g, b, _ := img.At(x, y).RGBA()
+					colors[(y-bounds.Min.Y)*bounds.Dx()+(x-bounds.Min.X)] = [3]uint8{uint8(r >> 8), uint8(g >> 8), uint8(b >> 8)}
+				}
+			}
+		}(i * rowsPerRoutine)
+	}
+	wg.Wait()
+
+	return colors
+}
+
+func unique(colors [][3]uint8) [][3]uint8 {
+	uniqueColors := make(map[[3]uint8]struct{}, len(colors))
 	for _, c := range colors {
 		uniqueColors[c] = struct{}{}
 	}
-	if len(uniqueColors) <= r.max {
-		palette := make(color.Palette, len(uniqueColors))
-		i := 0
-		for c := range uniqueColors {
-			palette[i] = color.RGBA{c[0], c[1], c[2], 255}
-			i++
-		}
-		return r.createPalettedImage(img, palette)
+
+	result := make([][3]uint8, 0, len(uniqueColors))
+	for c := range uniqueColors {
+		result = append(result, c)
 	}
-
-	boxes := r.medianCut(colors, r.max)
-
-	palette := make(color.Palette, len(boxes))
-	for i, box := range boxes {
-		palette[i] = averageColor(box.Colors)
-	}
-
-	return r.createPalettedImage(img, palette)
+	return result
 }
 
-func (r *Reducer) medianCut(colors [][3]uint8, maxColors int) []ColorBox {
-	boxes := []ColorBox{createColorBox(colors)}
-	for len(boxes) < maxColors {
-		i := findBoxWithLargestRange(boxes)
-		if i == -1 {
+func paletteFromUnique(uniqueColors [][3]uint8) color.Palette {
+	palette := make(color.Palette, len(uniqueColors))
+	for i, c := range uniqueColors {
+		palette[i] = color.RGBA{c[0], c[1], c[2], 255}
+	}
+	return palette
+}
+
+func kMeansPalette(colors [][3]uint8, maxClusters int) color.Palette {
+	if len(colors) <= maxClusters {
+		return paletteFromUnique(colors)
+	}
+
+	clusters := make([][3]uint8, maxClusters)
+	for i := range clusters {
+		clusters[i] = colors[rand.Intn(len(colors))]
+	}
+
+	assignments := make([]int, len(colors))
+	prevAssignments := make([]int, len(colors))
+
+	for iter := 0; iter < 10; iter++ {
+		converged := true
+
+		for i, c := range colors {
+			assignments[i] = closestCluster(c, clusters)
+			if assignments[i] != prevAssignments[i] {
+				converged = false
+				prevAssignments[i] = assignments[i]
+			}
+		}
+
+		if converged {
 			break
 		}
-		box1, box2 := splitBox(boxes[i])
-		boxes[i] = box1
-		boxes = append(boxes, box2)
-	}
-	return boxes
-}
 
-func createColorBox(colors [][3]uint8) ColorBox {
-	box := ColorBox{
-		Colors: colors,
-		Min:    [3]uint8{255, 255, 255},
-		Max:    [3]uint8{0, 0, 0},
-	}
+		clusterSums := make([][3]int, maxClusters)
+		clusterCounts := make(map[int]int, maxClusters)
 
-	for _, c := range colors {
-		for i := 0; i < 3; i++ {
-			box.Min[i] = min(box.Min[i], c[i])
-			box.Max[i] = max(box.Max[i], c[i])
+		for i, clusterIdx := range assignments {
+			clusterSums[clusterIdx][0] += int(colors[i][0])
+			clusterSums[clusterIdx][1] += int(colors[i][1])
+			clusterSums[clusterIdx][2] += int(colors[i][2])
+			clusterCounts[clusterIdx]++
 		}
-	}
 
-	return box
-}
-
-func findBoxWithLargestRange(boxes []ColorBox) int {
-	maxRange, index := uint8(0), -1
-	for i, box := range boxes {
-		for j := 0; j < 3; j++ {
-			r := box.Max[j] - box.Min[j]
-			if r > maxRange {
-				maxRange, index = r, i
+		for i := range clusters {
+			if count, ok := clusterCounts[i]; ok && count > 0 {
+				clusters[i][0] = uint8(clusterSums[i][0] / count)
+				clusters[i][1] = uint8(clusterSums[i][1] / count)
+				clusters[i][2] = uint8(clusterSums[i][2] / count)
 			}
 		}
 	}
-	return index
+
+	palette := make(color.Palette, maxClusters)
+	for i, c := range clusters {
+		palette[i] = color.RGBA{c[0], c[1], c[2], 255}
+	}
+	return palette
 }
 
-func splitBox(box ColorBox) (ColorBox, ColorBox) {
-	axis := 0
-	for i := 1; i < 3; i++ {
-		if box.Max[i]-box.Min[i] > box.Max[axis]-box.Min[axis] {
-			axis = i
+func closestCluster(color [3]uint8, clusters [][3]uint8) int {
+	closest := 0
+	minDist := math.MaxFloat64
+	for i, c := range clusters {
+		dist := manhattanDistance(color, c)
+		if dist < minDist {
+			minDist = dist
+			closest = i
 		}
 	}
-	sort.Slice(box.Colors, func(i, j int) bool {
-		return box.Colors[i][axis] < box.Colors[j][axis]
-	})
-	median := len(box.Colors) / 2
-	return createColorBox(box.Colors[:median]), createColorBox(box.Colors[median:])
+	return closest
 }
 
-func averageColor(colors [][3]uint8) color.Color {
-	var r, g, b uint32
-	for _, c := range colors {
-		r += uint32(c[0])
-		g += uint32(c[1])
-		b += uint32(c[2])
-	}
-	n := uint32(len(colors))
-	return color.RGBA{uint8(r / n), uint8(g / n), uint8(b / n), 255}
+func manhattanDistance(c1, c2 [3]uint8) float64 {
+	return math.Abs(float64(c1[0])-float64(c2[0])) + math.Abs(float64(c1[1])-float64(c2[1])) + math.Abs(float64(c1[2])-float64(c2[2]))
 }
 
-func (r *Reducer) createPalettedImage(img image.Image, palette color.Palette) *image.Paletted {
+func createPalettedImage(img image.Image, palette color.Palette) *image.Paletted {
 	bounds := img.Bounds()
 	output := image.NewPaletted(bounds, palette)
 	for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
