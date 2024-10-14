@@ -1,3 +1,4 @@
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
 
 import { cn } from 'lib/helpers';
@@ -6,6 +7,8 @@ import { useSettingsStore, useCanvasStore } from 'lib/stores';
 export default function Canvas() {
   const settings = useSettingsStore();
   const canvas = useCanvasStore();
+
+  const [count, isResizing] = useResize();
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDropAccepted(files: File[]) {
@@ -25,7 +28,7 @@ export default function Canvas() {
     <div className="relative flex h-full flex-1 items-start justify-center xl:items-center">
       {canvas.isProcessing && (
         <div
-          className="absolute left-1/2 top-4 flex -translate-x-1/2 items-center gap-2 rounded-lg border border-neutral-200 bg-white p-2 text-sm shadow-xl"
+          className="absolute left-1/2 top-4 z-20 flex -translate-x-1/2 items-center gap-2 rounded-lg border border-neutral-200 bg-white p-2 text-sm shadow-xl"
           role="status"
         >
           <svg
@@ -49,10 +52,15 @@ export default function Canvas() {
       )}
 
       {canvas.original && canvas.pattern ? (
-        <img
-          src={canvas.pattern.url}
-          className="pointer-events-none size-full select-none object-contain [image-rendering:pixelated]"
-        />
+        <>
+          <img
+            id="canvas-pattern"
+            src={canvas.pattern.url}
+            className="pointer-events-none max-h-full max-w-full flex-1 select-none rounded-md border-[12px] border-white shadow-lg [image-rendering:pixelated]"
+            style={{ aspectRatio: `${canvas.pattern.metadata.width}/${canvas.pattern.metadata.height}` }}
+          />
+          {!isResizing && <Grid key={count} />}
+        </>
       ) : (
         <div
           {...getRootProps()}
@@ -69,6 +77,99 @@ export default function Canvas() {
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+function useResize(timeout = 300) {
+  const [count, setCount] = useState(0);
+  const [isResizing, setIsResizing] = useState(false);
+
+  const cb = useCallback(() => {
+    setCount((prevCount) => prevCount + 1);
+    setIsResizing(false);
+  }, []);
+
+  useEffect(() => {
+    let timer: Timer;
+    const handleResize = () => {
+      clearTimeout(timer);
+      timer = setTimeout(cb, timeout);
+    };
+
+    window.addEventListener('resize', () => {
+      setIsResizing(true);
+      handleResize();
+    });
+
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      clearTimeout(timer);
+    };
+  }, [cb, timeout]);
+
+  return [count, isResizing] as const;
+}
+
+function Grid() {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const canvas = useCanvasStore();
+
+  const [dimensions, setDimensions] = useState<{ width: number; height: number }>();
+
+  useEffect(() => {
+    const el = document.getElementById('canvas-pattern');
+    if (!el) return;
+
+    const rect = el.getBoundingClientRect();
+    const width = rect.width - 24;
+    const height = rect.height - 24;
+    setDimensions({ width, height });
+  }, [canvas.pattern]);
+
+  const drawLine = (ctx: CanvasRenderingContext2D, x1: number, y1: number, x2: number, y2: number) => {
+    ctx.beginPath();
+    ctx.moveTo(Math.floor(x1) + 0.5, Math.floor(y1) + 0.5);
+    ctx.lineTo(Math.floor(x2) + 0.5, Math.floor(y2) + 0.5);
+    ctx.stroke();
+  };
+
+  useEffect(() => {
+    if (!dimensions) return;
+
+    const { width, height } = dimensions;
+    const { width: columns, height: rows } = canvas.pattern!.metadata;
+
+    const ctx = canvasRef.current?.getContext('2d')!;
+    ctx.clearRect(0, 0, width, height);
+
+    ctx.strokeStyle = '#C6B696';
+    ctx.lineWidth = 1;
+
+    // Draw vertical lines
+    const cellWidth = width / columns;
+    for (let i = 1; i < columns; i++) {
+      const x = i * cellWidth;
+      drawLine(ctx, x, 0, x, height);
+    }
+
+    // Draw horizontal lines
+    const cellHeight = height / rows;
+    for (let i = 1; i < rows; i++) {
+      const y = i * cellHeight;
+      drawLine(ctx, 0, y, width, y);
+    }
+
+    // Draw border
+    drawLine(ctx, 0, 0, width, 0); // top
+    drawLine(ctx, width, 0, width, height); // right
+    drawLine(ctx, width, height, 0, height); // bottom
+    drawLine(ctx, 0, height, 0, 0); // left
+  }, [dimensions]);
+
+  return (
+    <div className="absolute inset-0 z-10 flex items-center justify-center">
+      {dimensions && <canvas ref={canvasRef} width={dimensions.width + 1} height={dimensions.height + 1} />}
     </div>
   );
 }
