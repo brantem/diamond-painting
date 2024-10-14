@@ -76,6 +76,7 @@ func paletteFromUnique(uniqueColors [][3]uint8) color.Palette {
 	return palette
 }
 
+// kMeansPalette generates a palette using the k-means clustering algorithm. Thanks claude.ai
 func kMeansPalette(colors [][3]uint8, maxClusters int) color.Palette {
 	if len(colors) <= maxClusters {
 		return paletteFromUnique(colors)
@@ -92,18 +93,21 @@ func kMeansPalette(colors [][3]uint8, maxClusters int) color.Palette {
 	for iter := 0; iter < 10; iter++ {
 		converged := true
 
+		// assign each color to the closest cluster
 		for i, c := range colors {
 			assignments[i] = closestCluster(c, clusters)
 			if assignments[i] != prevAssignments[i] {
 				converged = false
-				prevAssignments[i] = assignments[i]
+				prevAssignments[i] = assignments[i] // track changes
 			}
 		}
 
+		// stop if no colors changed clusters
 		if converged {
 			break
 		}
 
+		// recalculate cluster centers
 		clusterSums := make([][3]int, maxClusters)
 		clusterCounts := make(map[int]int, maxClusters)
 
@@ -114,6 +118,7 @@ func kMeansPalette(colors [][3]uint8, maxClusters int) color.Palette {
 			clusterCounts[clusterIdx]++
 		}
 
+		// update cluster centers based on the average color
 		for i := range clusters {
 			if count, ok := clusterCounts[i]; ok && count > 0 {
 				clusters[i][0] = uint8(clusterSums[i][0] / count)
@@ -153,6 +158,7 @@ func createPalettedImage(img image.Image, palette color.Palette) (*image.Palette
 	output := image.NewPaletted(bounds, palette)
 	colors := make(map[color.Color]int, len(palette))
 
+	// Map each pixel to the closest color in the palette
 	for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
 		for x := bounds.Min.X; x < bounds.Max.X; x++ {
 			color := palette.Convert(img.At(x, y))

@@ -15,6 +15,7 @@ func New(max int) *Pixelator {
 	return &Pixelator{max: max}
 }
 
+// Do pixelates the image by resizing and averaging pixel blocks
 func (p *Pixelator) Do(img image.Image) *image.RGBA {
 	bounds := img.Bounds()
 	w, h := bounds.Dx(), bounds.Dy()
@@ -23,6 +24,7 @@ func (p *Pixelator) Do(img image.Image) *image.RGBA {
 	px := w
 	py := h
 
+	// maintain aspect ratio
 	if px > p.max {
 		px = p.max
 		py = int(float64(px) / aspectRatio)
@@ -33,6 +35,7 @@ func (p *Pixelator) Do(img image.Image) *image.RGBA {
 		px = int(float64(py) * aspectRatio)
 	}
 
+	// ensure minimum size of 1x1
 	px = max(1, px)
 	py = max(1, py)
 
@@ -47,7 +50,7 @@ func (p *Pixelator) Do(img image.Image) *image.RGBA {
 		start := i * rowsPerRoutine
 		end := (i + 1) * rowsPerRoutine
 		if i == numRoutines-1 {
-			end = py
+			end = py // last goroutine handles remaining rows
 		}
 
 		go func(start, end int) {
@@ -66,6 +69,7 @@ func processRows(img image.Image, pixelated *image.RGBA, start, end, w, h, px, p
 
 	for y := start; y < end; y++ {
 		for x := 0; x < px; x++ {
+			// determine the region in the original image
 			minX := int(float64(x) * scaleX)
 			minY := int(float64(y) * scaleY)
 			maxX := min(int(float64((x+1))*scaleX), w)
@@ -78,10 +82,12 @@ func processRows(img image.Image, pixelated *image.RGBA, start, end, w, h, px, p
 	}
 }
 
+// average the color values within a block of pixels
 func averageColor(img image.Image, minX, minY, maxX, maxY int) (uint8, uint8, uint8) {
 	var r, g, b uint64
 	count := uint64((maxX - minX) * (maxY - minY))
 
+	// sum the colors in the block
 	for py := minY; py < maxY; py++ {
 		for px := minX; px < maxX; px++ {
 			pr, pg, pb, _ := img.At(px, py).RGBA()
@@ -91,6 +97,7 @@ func averageColor(img image.Image, minX, minY, maxX, maxY int) (uint8, uint8, ui
 		}
 	}
 
+	// calculate average color
 	if count > 0 {
 		r = (r / count) >> 8
 		g = (g / count) >> 8
