@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+
 import Card from './Card';
 
 import { useSettingsStore, useCanvasStore } from 'lib/stores';
@@ -12,7 +13,6 @@ export default function SettingsCard() {
   const debouncedColors = useDebounce(settings.colors, 250);
 
   useEffect(() => {
-    console.log(debouncedSize, debouncedColors);
     if (isNaN(debouncedSize) || debouncedSize < 50 || debouncedSize > 300) return;
     if (isNaN(debouncedColors) || debouncedColors < 10 || debouncedColors > 50) return;
     canvas.process(null, { size: debouncedSize, colors: debouncedColors });
