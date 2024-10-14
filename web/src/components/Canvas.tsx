@@ -22,7 +22,7 @@ export default function Canvas() {
   });
 
   return (
-    <div className="relative flex h-full flex-1 items-start justify-center p-4 xl:items-center">
+    <div className="relative flex h-full flex-1 items-start justify-center xl:items-center">
       {canvas.isProcessing && (
         <div
           className="absolute left-1/2 top-4 flex -translate-x-1/2 items-center gap-2 rounded-lg border border-neutral-200 bg-white p-2 text-sm shadow-xl"
