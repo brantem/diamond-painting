@@ -57,15 +57,17 @@ export default function InfoCard() {
         </div>
 
         <div className="flex flex-col gap-1">
-          {Object.keys(canvas.pattern.metadata.colors).map((color) => (
-            <div key={color} className="flex items-center justify-between text-sm">
-              <div className="flex items-center gap-1">
-                <div className="size-4 rounded-sm border border-neutral-200" style={{ backgroundColor: color }} />
-                <span className="font-mono text-sm text-neutral-500">{color}</span>
+          {Object.entries(canvas.pattern.metadata.colors)
+            .sort(([_, a], [__, b]) => b - a)
+            .map(([color, usage]) => (
+              <div key={color} className="flex items-center justify-between text-sm">
+                <div className="flex items-center gap-1">
+                  <div className="size-4 rounded-sm border border-neutral-200" style={{ backgroundColor: color }} />
+                  <span className="font-mono text-sm text-neutral-500">{color}</span>
+                </div>
+                <span className="calt tabular-nums">{formatNumber(usage)}</span>
               </div>
-              <span className="calt tabular-nums">{formatNumber(canvas.pattern!.metadata.colors[color])}</span>
-            </div>
-          ))}
+            ))}
         </div>
       </div>
 
