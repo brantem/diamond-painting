@@ -10,7 +10,7 @@ interface SettingsState {
 
 const initialState = {
   size: 150,
-  colors: 20,
+  colors: 25,
 };
 
 export const useSettingsStore = create<SettingsState>()((set, get) => ({
