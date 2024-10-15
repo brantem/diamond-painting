@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"image"
 	_ "image/jpeg"
-	"image/png"
 	"syscall/js"
 
 	"diamond.brantem.com/generator/pixelator"
@@ -39,12 +38,9 @@ func generate(this js.Value, args []js.Value) interface{} {
 	r := reducer.New(options.Get("colors").Int())
 	reduced, colors := r.Do(pixelated)
 
-	var buf bytes.Buffer
-	png.Encode(&buf, reduced)
-
-	b := buf.Bytes()
-	data := js.Global().Get("Uint8Array").New(len(b))
-	js.CopyBytesToJS(data, b)
+	pixels := getPixels(reduced)
+	data := js.Global().Get("Uint8ClampedArray").New(len(pixels))
+	js.CopyBytesToJS(data, pixels)
 	result.Set("data", data)
 
 	colorsObj := js.Global().Get("Object").New(len(colors))
@@ -58,7 +54,7 @@ func generate(this js.Value, args []js.Value) interface{} {
 }
 
 func getImage(buf js.Value) image.Image {
-	arr := js.Global().Get("Uint8Array").New(buf)
+	arr := js.Global().Get("Uint8ClampedArray").New(buf)
 	data := make([]byte, arr.Length())
 	js.CopyBytesToGo(data, arr)
 
@@ -68,4 +64,22 @@ func getImage(buf js.Value) image.Image {
 		return nil
 	}
 	return img
+}
+
+func getPixels(img *image.Paletted) []uint8 {
+	bounds := img.Bounds()
+	width, height := bounds.Dx(), bounds.Dy()
+	data := make([]uint8, width*height*4)
+
+	for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
+		for x := bounds.Min.X; x < bounds.Max.X; x++ {
+			r, g, b, a := img.At(x, y).RGBA()
+			i := (y*width + x) * 4
+			data[i] = uint8(r >> 8)
+			data[i+1] = uint8(g >> 8)
+			data[i+2] = uint8(b >> 8)
+			data[i+3] = uint8(a >> 8)
+		}
+	}
+	return data
 }

@@ -6,7 +6,7 @@ declare global {
       data: string | ArrayBuffer,
       options: { size: number; colors: number },
     ): {
-      data: Uint8Array;
+      data: Uint8ClampedArray;
       metadata: {
         width: number;
         height: number;

@@ -9,7 +9,7 @@ interface CanvasState {
     };
   } | null;
   pattern: {
-    url: string;
+    data: Uint8ClampedArray;
     metadata: {
       width: number;
       height: number;
@@ -36,7 +36,6 @@ export const useCanvasStore = create<CanvasState>()((set, get) => ({
     set({ isProcessing: true });
 
     const prev = get();
-    if (prev.pattern?.url) URL.revokeObjectURL(prev.pattern.url);
 
     if (file) {
       const url = URL.createObjectURL(file);
@@ -62,14 +61,7 @@ export const useCanvasStore = create<CanvasState>()((set, get) => ({
       if (!buf) return set({ isProcessing: false });
 
       try {
-        const res = window.generate(buf, options);
-        const blob = new Blob([res.data], { type: 'image/png' });
-        set({
-          pattern: {
-            url: URL.createObjectURL(blob),
-            metadata: res.metadata,
-          },
-        });
+        set({ pattern: window.generate(buf, options) });
       } catch (error) {
         console.error('Error processing image:', error);
       }
