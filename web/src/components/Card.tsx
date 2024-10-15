@@ -4,7 +4,7 @@ export default function Card({ className, ...props }: React.ComponentPropsWithou
   return (
     <div
       className={cn(
-        'flex w-full flex-col gap-3 rounded-lg border border-neutral-200 bg-white p-3 text-sm shadow-md shadow-neutral-100',
+        'flex w-full flex-col gap-3 rounded-lg border border-neutral-200 bg-white p-3 text-sm shadow-md shadow-black/5',
         className,
       )}
       {...props}
