@@ -4,9 +4,9 @@ import Card from './Card';
 
 import { formatNumber } from 'lib/helpers';
 
-const MIN_SCALE = 0.5; // Minimum internal scale (50%)
-const MAX_SCALE = 3; // Maximum internal scale (200%)
-const DEFAULT_SCALE = 1; // Default internal scale (100%)
+const MIN_SCALE = 0.1;
+const MAX_SCALE = 2;
+const DEFAULT_SCALE = 1;
 const ZOOM_SENSITIVITY = 0.1;
 const SCROLL_SENSITIVITY = 1;
 
@@ -34,7 +34,9 @@ export default forwardRef<CanvasHandle, CanvasProps>(function Canvas({ render },
     const { width, height } = ctx.canvas;
     ctx.clearRect(0, 0, width, height);
     ctx.save();
-    ctx.scale(scale, scale);
+
+    const scaleFactor = scale <= 1 ? scale : Math.pow(scale, 2);
+    ctx.scale(scaleFactor, scaleFactor);
     ctx.translate(offset.x, offset.y);
 
     render(ctx);
@@ -73,7 +75,7 @@ export default forwardRef<CanvasHandle, CanvasProps>(function Canvas({ render },
 
   const handleZoom = useCallback((centerX: number, centerY: number, delta: number) => {
     setScale((prev) => {
-      const dir = delta > 0 ? 1 : -1; // Determine the direction of zoom
+      const dir = delta > 0 ? 1 : -1;
       const v = Math.min(Math.max(prev + dir * ZOOM_SENSITIVITY, MIN_SCALE), MAX_SCALE);
       setOffset((prevOffset) => ({
         x: Math.round(prevOffset.x - (centerX / prev - centerX / v)),
