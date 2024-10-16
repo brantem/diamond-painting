@@ -82,7 +82,7 @@ function Images() {
       {images.map((image) => (
         <div
           key={image}
-          className="group w-40 overflow-hidden rounded-lg hover:cursor-pointer"
+          className="group h-60 w-40 overflow-hidden rounded-lg hover:cursor-pointer"
           onClick={(e) => {
             e.stopPropagation();
             canvas.process(image, { size: settings.size, colors: settings.colors });
