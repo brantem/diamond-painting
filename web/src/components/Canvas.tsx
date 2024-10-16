@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState, useCallback, useImperativeHandle, forwardRef } from 'react';
+import { useRef, useEffect, useState, useCallback } from 'react';
 
 import Card from './Card';
 
@@ -10,15 +10,11 @@ const DEFAULT_SCALE = 1;
 const ZOOM_SENSITIVITY = 0.1;
 const SCROLL_SENSITIVITY = 1;
 
-interface CanvasHandle {
-  update(): void;
-}
-
 interface CanvasProps {
   render(ctx: CanvasRenderingContext2D): void;
 }
 
-export default forwardRef<CanvasHandle, CanvasProps>(function Canvas({ render }, ref) {
+export default function Canvas({ render }: CanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const contextRef = useRef<CanvasRenderingContext2D | null>(null);
 
@@ -43,8 +39,6 @@ export default forwardRef<CanvasHandle, CanvasProps>(function Canvas({ render },
 
     ctx.restore();
   }, [scale, offset, render]);
-
-  useImperativeHandle(ref, () => ({ update }));
 
   const init = () => {
     const canvas = canvasRef.current;
@@ -142,4 +136,4 @@ export default forwardRef<CanvasHandle, CanvasProps>(function Canvas({ render },
       </Card>
     </>
   );
-});
+}
