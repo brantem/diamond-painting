@@ -17,7 +17,7 @@ interface CanvasState {
     };
   } | null;
 
-  process(file: File | null, options: { size: number; colors: number }): void;
+  process(fileOrUrl: string | File | null, options: { size: number; colors: number }): Promise<void>;
   isProcessing: boolean;
 
   reset(): void;
@@ -32,17 +32,32 @@ const initialState = {
 export const useCanvasStore = create<CanvasState>()((set, get) => ({
   ...initialState,
 
-  process(file, options) {
+  async process(fileOrUrl, options) {
     set({ isProcessing: true });
 
     const prev = get();
 
+    let file;
+    if (typeof fileOrUrl === 'string') {
+      try {
+        const res = await fetch(fileOrUrl);
+        if (!res.ok) throw new Error('Failed to fetch image from URL');
+
+        const blob = await res.blob();
+        file = new File([blob], fileOrUrl);
+      } catch (error) {
+        console.error('Error fetching image:', error);
+        return set({ isProcessing: false });
+      }
+    } else {
+      file = fileOrUrl;
+    }
+
     if (file) {
-      const url = URL.createObjectURL(file);
       const img = new Image();
-      img.src = url;
+      img.src = URL.createObjectURL(file);
       img.onload = () => {
-        URL.revokeObjectURL(url);
+        URL.revokeObjectURL(img.src);
         set({
           original: {
             file,

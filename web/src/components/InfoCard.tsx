@@ -99,10 +99,7 @@ function ChangePictureButton() {
         accept="image/*"
         onChange={(e) => {
           if (!e.target.files || !e.target.files.length) return;
-          canvas.process(e.target.files[0], {
-            size: settings.size,
-            colors: settings.colors,
-          });
+          canvas.process(e.target.files[0], { size: settings.size, colors: settings.colors });
         }}
       />
       <button
