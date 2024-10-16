@@ -72,16 +72,19 @@ export const useCanvasStore = create<CanvasState>()((set, get) => ({
 
     const reader = new FileReader();
     reader.onload = async (e) => {
-      const buf = e.target?.result;
-      if (!buf) return set({ isProcessing: false });
+      const data = e.target?.result;
+      if (!data) return set({ isProcessing: false });
 
-      try {
-        set({ pattern: window.generate(buf, options) });
-      } catch (error) {
-        console.error('Error processing image:', error);
-      }
+      const worker = new Worker(new URL('../../worker.ts', import.meta.url));
+      worker.postMessage({ data, options });
 
-      set({ isProcessing: false });
+      worker.onmessage = (e) => {
+        set({ pattern: e.data, isProcessing: false });
+      };
+      worker.onerror = (err) => {
+        console.error('Error processing image:', err);
+        set({ isProcessing: false });
+      };
     };
     reader.readAsArrayBuffer(_file);
   },

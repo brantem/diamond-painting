@@ -18,4 +18,3 @@ The compiled WebAssembly file will be located in the `web/public/generator.wasm`
 ### Current Limitations
 
 - Performance: The generator can be a bit slow, likely due to the overhead of using WASM. While it would probably run faster if written in JavaScript, the goal here was to test WASM, which is why Go was used.
-- UI Freezing: When uploading large images, the app freezes for a few seconds during pattern generation. This is because the entire process runs on the main thread. The next step is to move the generation into a Web Worker to prevent UI blocking and improve the overall experience.
