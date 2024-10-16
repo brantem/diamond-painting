@@ -17,3 +17,6 @@ self.onmessage = async (e) => {
     console.error(err);
   }
 };
+
+// to make TS happy
+export type {};
