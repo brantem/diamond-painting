@@ -30,7 +30,7 @@ func generate(this js.Value, args []js.Value) interface{} {
 
 	result := js.Global().Get("Object").New()
 
-	metadataObj := js.Global().Get("Object").New(2)
+	metadataObj := js.Global().Get("Object").New()
 	metadataObj.Set("width", pixelated.Rect.Dx())
 	metadataObj.Set("height", pixelated.Rect.Dy())
 	result.Set("metadata", metadataObj)
@@ -43,7 +43,7 @@ func generate(this js.Value, args []js.Value) interface{} {
 	js.CopyBytesToJS(data, pixels)
 	result.Set("data", data)
 
-	colorsObj := js.Global().Get("Object").New(len(colors))
+	colorsObj := js.Global().Get("Object").New()
 	for color, usage := range colors {
 		r, g, b, _ := color.RGBA()
 		colorsObj.Set(fmt.Sprintf("#%02X%02X%02X", uint8(r>>8), uint8(g>>8), uint8(b>>8)), usage)
