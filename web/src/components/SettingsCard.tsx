@@ -19,7 +19,7 @@ export default function SettingsCard() {
   }, [debouncedSize, debouncedColors]);
 
   return (
-    <Card>
+    <Card className="p-3">
       <h1 className="text-base font-medium">Diamond Painting</h1>
 
       <div className="flex flex-col gap-2">

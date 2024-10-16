@@ -10,10 +10,10 @@ export default function InfoCard() {
   if (!canvas.original || !canvas.pattern) return null;
 
   return (
-    <Card>
+    <Card className="overflow-hidden py-3">
       <ChangePictureButton />
 
-      <div className="flex flex-col gap-2">
+      <div className="flex flex-col gap-2 px-3">
         <div className="flex items-center justify-between text-sm">
           <span className="text-neutral-500">Width</span>
           <span className="tabular-nums">{formatNumber(canvas.original.metadata.width)}</span>
@@ -30,7 +30,7 @@ export default function InfoCard() {
         </div>
       </div>
 
-      <div className="flex flex-col gap-2">
+      <div className="flex flex-col gap-2 px-3">
         <div className="flex select-none items-center gap-2 text-neutral-500">
           <hr className="flex-1" />
           <span>Diamonds</span>
@@ -49,14 +49,14 @@ export default function InfoCard() {
         </div>
       </div>
 
-      <div className="flex flex-col gap-2">
-        <div className="flex select-none items-center gap-2 text-neutral-500">
+      <div className="flex flex-col gap-2 overflow-hidden">
+        <div className="flex select-none items-center gap-2 px-3 text-neutral-500">
           <hr className="flex-1" />
           <span>Colors</span>
           <hr className="flex-1" />
         </div>
 
-        <div className="flex flex-col gap-1">
+        <div className="flex max-h-[490px] flex-col gap-1 overflow-y-auto px-3">
           {Object.entries(canvas.pattern.metadata.colors)
             .sort(([_, a], [__, b]) => b - a)
             .map(([color, usage]) => (
@@ -71,13 +71,15 @@ export default function InfoCard() {
         </div>
       </div>
 
-      <button
-        type="reset"
-        className="h-10 w-full rounded-md bg-red-50 px-2 font-medium text-red-500 hover:bg-red-100"
-        onClick={() => canvas.reset()}
-      >
-        Reset
-      </button>
+      <div className="px-3">
+        <button
+          type="reset"
+          className="h-10 w-full rounded-md bg-red-50 px-2 font-medium text-red-500 hover:bg-red-100"
+          onClick={() => canvas.reset()}
+        >
+          Reset
+        </button>
+      </div>
     </Card>
   );
 }
@@ -89,7 +91,7 @@ function ChangePictureButton() {
   const inputRef = useRef<HTMLInputElement>(null);
 
   return (
-    <div>
+    <div className="px-3">
       <input
         ref={inputRef}
         type="file"
