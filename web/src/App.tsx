@@ -5,11 +5,10 @@ import InfoCard from 'components/InfoCard';
 import Dropzone from 'components/Dropzone';
 import Canvas from 'components/Canvas';
 
-import { useCanvasStore } from 'lib/stores';
-
-const PIXEL_SIZE = 0.11 * 96; // TODO
+import { useCanvasStore, useSettingsStore } from 'lib/stores';
 
 export default function App() {
+  const settings = useSettingsStore();
   const canvas = useCanvasStore();
 
   const render = useCallback(
@@ -18,9 +17,10 @@ export default function App() {
 
       const { width, height } = canvas.pattern.metadata;
       const numPixels = width * height;
+      const pixelSize = settings.type * 96;
 
-      const offsetX = ctx.canvas.width / window.devicePixelRatio / 2 - (width * PIXEL_SIZE) / 2;
-      const offsetY = ctx.canvas.height / window.devicePixelRatio / 2 - (height * PIXEL_SIZE) / 2;
+      const offsetX = ctx.canvas.width / window.devicePixelRatio / 2 - (width * pixelSize) / 2;
+      const offsetY = ctx.canvas.height / window.devicePixelRatio / 2 - (height * pixelSize) / 2;
 
       // Pattern
 
@@ -32,9 +32,9 @@ export default function App() {
         const a = canvas.pattern.data[i * 4 + 3];
 
         ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${a / 255})`;
-        const x = offsetX + (i % width) * PIXEL_SIZE;
-        const y = offsetY + Math.floor(i / width) * PIXEL_SIZE;
-        ctx.fillRect(x, y, PIXEL_SIZE, PIXEL_SIZE);
+        const x = offsetX + (i % width) * pixelSize;
+        const y = offsetY + Math.floor(i / width) * pixelSize;
+        ctx.fillRect(x, y, pixelSize, pixelSize);
       }
 
       // Grid
@@ -45,22 +45,22 @@ export default function App() {
       // Vertical
       ctx.beginPath();
       for (let i = 0; i <= width; i++) {
-        const x = offsetX + i * PIXEL_SIZE;
+        const x = offsetX + i * pixelSize;
         ctx.moveTo(x, offsetY);
-        ctx.lineTo(x, offsetY + height * PIXEL_SIZE);
+        ctx.lineTo(x, offsetY + height * pixelSize);
       }
       ctx.stroke();
 
       // Horizontal
       ctx.beginPath();
       for (let j = 0; j <= height; j++) {
-        const y = offsetY + j * PIXEL_SIZE;
+        const y = offsetY + j * pixelSize;
         ctx.moveTo(offsetX, y);
-        ctx.lineTo(offsetX + width * PIXEL_SIZE, y);
+        ctx.lineTo(offsetX + width * pixelSize, y);
       }
       ctx.stroke();
     },
-    [canvas.pattern],
+    [settings.type, canvas.pattern],
   );
 
   return !canvas.pattern ? (

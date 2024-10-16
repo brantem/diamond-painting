@@ -1,9 +1,5 @@
 import { useRef, useEffect, useState, useCallback } from 'react';
 
-import Card from './Card';
-
-import { formatNumber } from 'lib/helpers';
-
 const MIN_SCALE = 0.1;
 const MAX_SCALE = 2;
 const DEFAULT_SCALE = 1;
@@ -135,20 +131,14 @@ export default function Canvas({ render }: CanvasProps) {
   }, []);
 
   return (
-    <>
-      <canvas
-        ref={canvasRef}
-        onWheel={handleWheel}
-        onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
-        onPointerUp={handlePointerUp}
-        style={{ cursor: isDragging.current ? 'grabbing' : 'grab' }}
-        className="size-full touch-none"
-      />
-
-      <Card className="fixed right-4 top-4 w-fit p-2 text-right">
-        <span className="tabular-nums">{formatNumber(scale.current * 100)}%</span>
-      </Card>
-    </>
+    <canvas
+      ref={canvasRef}
+      onWheel={handleWheel}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      style={{ cursor: isDragging.current ? 'grabbing' : 'grab' }}
+      className="size-full touch-none"
+    />
   );
 }

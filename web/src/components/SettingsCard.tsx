@@ -4,6 +4,7 @@ import Card from './Card';
 
 import { useSettingsStore, useCanvasStore } from 'lib/stores';
 import { useDebounce } from 'lib/hooks';
+import { DiamondType } from 'types';
 
 export default function SettingsCard() {
   const settings = useSettingsStore();
@@ -23,6 +24,18 @@ export default function SettingsCard() {
       <h1 className="text-base font-medium">Diamond Painting</h1>
 
       <div className="flex flex-col gap-2">
+        <label className="flex items-center justify-between text-sm">
+          <span className="text-neutral-500">Type</span>
+          <select
+            value={settings.type}
+            onChange={(e) => settings.setType(parseFloat(e.target.value))}
+            className="rounded-md border-neutral-200 py-1 pl-2 text-right text-sm"
+          >
+            <option value={DiamondType.Round}>Round</option>
+            <option value={DiamondType.Square}>Square</option>
+          </select>
+        </label>
+
         <label className="flex items-center justify-between text-sm">
           <span className="text-neutral-500">Size</span>
           <input
