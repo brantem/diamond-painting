@@ -17,11 +17,11 @@ interface CanvasProps {
 export default function Canvas({ render }: CanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const contextRef = useRef<CanvasRenderingContext2D | null>(null);
-
-  const [scale, setScale] = useState(DEFAULT_SCALE);
-  const [offset, setOffset] = useState({ x: 0, y: 0 });
+  const scale = useRef(DEFAULT_SCALE);
+  const offset = useRef({ x: 0, y: 0 });
   const isDragging = useRef(false);
   const lastPosition = useRef({ x: 0, y: 0 });
+  const raf = useRef<number | null>(null);
 
   const update = useCallback(() => {
     const ctx = contextRef.current;
@@ -31,16 +31,24 @@ export default function Canvas({ render }: CanvasProps) {
     ctx.clearRect(0, 0, width, height);
     ctx.save();
 
-    const scaleFactor = scale <= 1 ? scale : Math.pow(scale, 2);
+    const scaleFactor = scale.current <= 1 ? scale.current : Math.pow(scale.current, 2);
     ctx.scale(scaleFactor, scaleFactor);
-    ctx.translate(offset.x, offset.y);
+    ctx.translate(offset.current.x, offset.current.y);
 
     render(ctx);
 
     ctx.restore();
-  }, [scale, offset, render]);
+  }, [render]);
 
-  const init = () => {
+  const scheduleUpdate = useCallback(() => {
+    if (raf.current !== null) return;
+    raf.current = requestAnimationFrame(() => {
+      update();
+      raf.current = null;
+    });
+  }, [update]);
+
+  const init = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
@@ -58,26 +66,31 @@ export default function Canvas({ render }: CanvasProps) {
     canvas.style.height = `${rect.height}px`;
 
     ctx.scale(dpr, dpr);
-  };
+    scheduleUpdate();
+  }, [scheduleUpdate]);
 
   useEffect(() => {
     init();
-    update();
-  }, []);
+    return () => {
+      if (raf.current !== null) cancelAnimationFrame(raf.current);
+    };
+  }, [init]);
 
-  useEffect(update, [update]);
-
-  const handleZoom = useCallback((centerX: number, centerY: number, delta: number) => {
-    setScale((prev) => {
+  const handleZoom = useCallback(
+    (centerX: number, centerY: number, delta: number) => {
       const dir = delta > 0 ? 1 : -1;
-      const v = Math.min(Math.max(prev + dir * ZOOM_SENSITIVITY, MIN_SCALE), MAX_SCALE);
-      setOffset((prevOffset) => ({
-        x: Math.round(prevOffset.x - (centerX / prev - centerX / v)),
-        y: Math.round(prevOffset.y - (centerY / prev - centerY / v)),
-      }));
-      return v;
-    });
-  }, []);
+      const newScale = Math.min(Math.max(scale.current + dir * ZOOM_SENSITIVITY, MIN_SCALE), MAX_SCALE);
+
+      offset.current = {
+        x: Math.round(offset.current.x - (centerX / scale.current - centerX / newScale)),
+        y: Math.round(offset.current.y - (centerY / scale.current - centerY / newScale)),
+      };
+
+      scale.current = newScale;
+      scheduleUpdate();
+    },
+    [scheduleUpdate],
+  );
 
   const handleWheel = useCallback(
     (e: React.WheelEvent<HTMLCanvasElement>) => {
@@ -88,13 +101,14 @@ export default function Canvas({ render }: CanvasProps) {
       if (e.ctrlKey) {
         handleZoom(mouseX, mouseY, -e.deltaY);
       } else {
-        setOffset((prev) => ({
-          x: Math.round(prev.x - (e.deltaX * SCROLL_SENSITIVITY) / scale),
-          y: Math.round(prev.y - (e.deltaY * SCROLL_SENSITIVITY) / scale),
-        }));
+        offset.current = {
+          x: Math.round(offset.current.x - (e.deltaX * SCROLL_SENSITIVITY) / scale.current),
+          y: Math.round(offset.current.y - (e.deltaY * SCROLL_SENSITIVITY) / scale.current),
+        };
+        scheduleUpdate();
       }
     },
-    [handleZoom, scale],
+    [handleZoom, scheduleUpdate],
   );
 
   const handlePointerDown = useCallback((e: React.PointerEvent<HTMLCanvasElement>) => {
@@ -106,12 +120,13 @@ export default function Canvas({ render }: CanvasProps) {
   const handlePointerMove = useCallback(
     (e: React.PointerEvent<HTMLCanvasElement>) => {
       if (!isDragging.current) return;
-      const dx = Math.round((e.clientX - lastPosition.current.x) / scale);
-      const dy = Math.round((e.clientY - lastPosition.current.y) / scale);
-      setOffset((prev) => ({ x: prev.x + dx, y: prev.y + dy }));
+      const dx = Math.round((e.clientX - lastPosition.current.x) / scale.current);
+      const dy = Math.round((e.clientY - lastPosition.current.y) / scale.current);
+      offset.current = { x: offset.current.x + dx, y: offset.current.y + dy };
       lastPosition.current = { x: e.clientX, y: e.clientY };
+      scheduleUpdate();
     },
-    [scale],
+    [scheduleUpdate],
   );
 
   const handlePointerUp = useCallback((e: React.PointerEvent<HTMLCanvasElement>) => {
@@ -132,7 +147,7 @@ export default function Canvas({ render }: CanvasProps) {
       />
 
       <Card className="fixed right-4 top-4 w-fit p-2 text-right">
-        <span className="tabular-nums">{formatNumber(scale * 100)}%</span>
+        <span className="tabular-nums">{formatNumber(scale.current * 100)}%</span>
       </Card>
     </>
   );
