@@ -37,7 +37,7 @@ export const useCanvasStore = create<CanvasState>()((set, get) => ({
 
     const prev = get();
 
-    let file;
+    let file: File | null;
     if (typeof fileOrUrl === 'string') {
       try {
         const res = await fetch(fileOrUrl);
@@ -60,7 +60,7 @@ export const useCanvasStore = create<CanvasState>()((set, get) => ({
         URL.revokeObjectURL(img.src);
         set({
           original: {
-            file,
+            file: file as File,
             metadata: { width: img.width, height: img.height },
           },
         });
