@@ -69,16 +69,15 @@ func getImage(buf js.Value) image.Image {
 func getPixels(img *image.Paletted) []uint8 {
 	bounds := img.Bounds()
 	width, height := bounds.Dx(), bounds.Dy()
-	data := make([]uint8, width*height*4)
+	data := make([]uint8, width*height*3)
 
 	for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
 		for x := bounds.Min.X; x < bounds.Max.X; x++ {
-			r, g, b, a := img.At(x, y).RGBA()
-			i := (y*width + x) * 4
+			r, g, b, _ := img.At(x, y).RGBA()
+			i := (y*width + x) * 3
 			data[i] = uint8(r >> 8)
 			data[i+1] = uint8(g >> 8)
 			data[i+2] = uint8(b >> 8)
-			data[i+3] = uint8(a >> 8)
 		}
 	}
 	return data

@@ -26,12 +26,11 @@ export default function App() {
 
       ctx.lineWidth = 0; // No outline for pixels
       for (let i = 0; i < numPixels; i++) {
-        const r = canvas.pattern.data[i * 4];
-        const g = canvas.pattern.data[i * 4 + 1];
-        const b = canvas.pattern.data[i * 4 + 2];
-        const a = canvas.pattern.data[i * 4 + 3];
+        const r = canvas.pattern.data[i * 3];
+        const g = canvas.pattern.data[i * 3 + 1];
+        const b = canvas.pattern.data[i * 3 + 2];
 
-        ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${a / 255})`;
+        ctx.fillStyle = `rgba(${r}, ${g}, ${b}, 255)`;
         const x = offsetX + (i % width) * pixelSize;
         const y = offsetY + Math.floor(i / width) * pixelSize;
         ctx.fillRect(x, y, pixelSize, pixelSize);
